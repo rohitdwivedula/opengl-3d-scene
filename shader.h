@@ -11,45 +11,50 @@
 #include <iostream>
 using namespace std;
 
+/*
+	@brief creates a program by compiling vertex and fragment shaders and returns it,
+*/
 class Shader
 {
 public:
-    unsigned int ID;
-    Shader(const char* vertexPath, const char* fragmentPath)
+    unsigned int ID; ///< ID of the program
+    /**
+	 * @brief constructor to create a shader program
+	 * @param vertex_shader_file relative path (from working directory) to the file containing the vertex shader code.
+	 * @param fragment_shader_file relative path (from working directory) to the file containing the fragment shader code.
+     */
+    Shader(const char* vertex_shader_file, const char* fragment_shader_file)
     {
-        string vertexCode;
-        string fragmentCode;
+        string vertex_code_string;
+        string fragment_code_string;
         string geometryCode;
         ifstream vShaderFile;
         ifstream fShaderFile;
         ifstream gShaderFile;
-        vShaderFile.exceptions (ifstream::failbit | ifstream::badbit);
-        fShaderFile.exceptions (ifstream::failbit | ifstream::badbit);
-        gShaderFile.exceptions (ifstream::failbit | ifstream::badbit);
         try 
         {
-            vShaderFile.open(vertexPath);
-            fShaderFile.open(fragmentPath);
+            vShaderFile.open(vertex_shader_file);
+            fShaderFile.open(fragment_shader_file);
             stringstream vShaderStream, fShaderStream;
             vShaderStream << vShaderFile.rdbuf();
             fShaderStream << fShaderFile.rdbuf();		
             vShaderFile.close();
             fShaderFile.close();
-            vertexCode = vShaderStream.str();
-            fragmentCode = fShaderStream.str();			
+            vertex_code_string = vShaderStream.str();
+            fragment_code_string = fShaderStream.str();
         }
-        catch (ifstream::failure& e)
-        {
-            cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << endl;
+        catch (...) {
+            cout << "Error: One of the files is missing." << endl;
+        	return;
         }
-        const char* vShaderCode = vertexCode.c_str();
-        const char * fShaderCode = fragmentCode.c_str();
+        const char* vertex_shader_code = vertex_code_string.c_str();
+        const char * fragment_shader_code = fragment_code_string.c_str();
         unsigned int vertex, fragment;
         vertex = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertex, 1, &vShaderCode, NULL);
+        glShaderSource(vertex, 1, &vertex_shader_code, NULL);
         glCompileShader(vertex);
-        GLint success;
-        GLchar infoLog[1024];
+        GLint success; //< flag to test if compilation was successful
+        GLchar infoLog[1024]; //< error/information logs, if any, are stored here. 
         glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
         if(!success)
         {
@@ -58,7 +63,7 @@ public:
             cout << infoLog;
         }
         fragment = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragment, 1, &fShaderCode, NULL);
+        glShaderSource(fragment, 1, &fragment_shader_code, NULL);
         glCompileShader(fragment);
         glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
         if(!success)
@@ -82,6 +87,9 @@ public:
         glDeleteShader(fragment);
 
     }
+    /**
+	 * @brief use this shader program
+     */
     void use() 
     { 
         glUseProgram(ID); 

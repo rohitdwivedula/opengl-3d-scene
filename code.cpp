@@ -1,29 +1,40 @@
-#include "Mesh.h"
-#include "Model.h"
-#include "Camera.h"
 #include <iostream>
 using namespace std;
+#include "obj_import.h"
+#include "camera.h"
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+/**
+ * @brief callback function that's triggered whenever the window framebuffer size is changed
+ * @param window current active GLFW window
+ * @param width width of the buffer
+ * @param height height of the buffer
+ */
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void processInput(GLFWwindow *window);
+void processUserInput(GLFWwindow* window);
 void cube(GLfloat center_position_X, GLfloat center_position_Y, GLfloat center_position_Z, GLfloat edgeLength);
 
-// settings
-const unsigned int SCREEN_WIDTH = 800;
-const unsigned int SCREEN_HEIGHT = 600;
-
-// camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-float lastX = SCREEN_WIDTH / 2.0f;
-float lastY = SCREEN_HEIGHT / 2.0f;
-bool firstMouse = true;
 
-// timing
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+const unsigned int SCREEN_WIDTH = 800;
+const unsigned int SCREEN_HEIGHT = 600;
+
+float X_limit = SCREEN_WIDTH / 2.0f;
+float Y_limit = SCREEN_HEIGHT / 2.0f;
+bool first_mouse_action = true; //< keeps track of whether a mouse movement has happened so far.
+
+/**
+ * @brief driver code to draw the scene and interact with it
+ * @return execution status (integer) - zero indicating success.
+ */
 int main()
 {
     glfwInit();
@@ -59,40 +70,40 @@ int main()
 
     glEnable(GL_DEPTH_TEST); 
 
-    Shader blenderShader("vertex_shader.glsl", "fragment_shader.glsl");
+    Shader blender_shader("vertex_shader.glsl", "fragment_shader.glsl");
 
-    char blenderModel[45] = "bed.obj"; // blender model containing a bed and a 
-    Model blenderObject(blenderModel);
+    char blender_data_path[45] = "resources/bed.obj"; // blender model containing a bed and a 
+    ObjImport blender_object(blender_data_path);
     while (!glfwWindowShouldClose(window))
     {
-    	// cout << "Inside the loop now";
+    	// cout << "Inside the loop now"; // debug
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        processInput(window);
+        processUserInput(window);
         // draw a cube
-        // glTranslatef(lastX, lastY, -500 );
-        // glTranslatef(lastX, lastY, 500 );
+        // glTranslatef(X_limit, Y_limit, -500 );
+        // glTranslatef(X_limit, Y_limit, 500 );
         
-        // cube(lastX, lastY, -500, 200);
+        // cube(X_limit, Y_limit, -500, 200);
         // glPopMatrix();
 
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        blenderShader.use();
+        blender_shader.use();
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
-        blenderShader.setMat4("projection", projection);
-        blenderShader.setMat4("view", view);
+        blender_shader.setMat4("projection", projection);
+        blender_shader.setMat4("view", view);
 
         // render the loaded model
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));	// it's a bit too big for our scene, so scale it down
-        blenderShader.setMat4("model", model);
-        blenderObject.Draw(blenderShader);
+        model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); 
+        model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
+        blender_shader.setMat4("model", model);
+        blender_object.Draw(blender_shader);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -102,62 +113,48 @@ int main()
     return 0;
 }
 
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
-}
-
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    // make sure the viewport matches the new window dimensions; note that width and 
-    // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
-}
-
-// glfw: whenever the mouse moves, this callback is called
-// -------------------------------------------------------
+/**
+ * @brief process mouse movement
+ * @param window active GLFW window
+ */
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 {
-    if (firstMouse)
+    if (first_mouse_action)
     {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
+        X_limit = xpos;
+        Y_limit = ypos;
+        first_mouse_action = false;
     }
 
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    float xoffset = xpos - X_limit;
+    float yoffset = Y_limit - ypos; // reversed since y-coordinates go from bottom to top
 
-    lastX = xpos;
-    lastY = ypos;
+    X_limit = xpos;
+    Y_limit = ypos;
 
     camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
-// ----------------------------------------------------------------------
+/*
+ * @brief handle user scrolling the mouse scroll wheel
+ * @xoffset  
+ */
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     camera.ProcessMouseScroll(yoffset);
 }
 
+
+/**
+ * @brief draws a cube centred at given coordinate
+ * @param center_position_X centre of the cube: x-coordinate
+ * @param center_position_Y centre of the cube: y-coordinate
+ * @param center_position_Z centre of the cube: z-coordinate
+ * @param edgeLength length of side of cube
+ */
 void cube(GLfloat center_position_X, GLfloat center_position_Y, GLfloat center_position_Z, GLfloat edgeLength )
 {
-    GLfloat half_edge = edgeLength * 0.5f;
+    GLfloat half_edge = edgeLength * 0.5f; //< half the length of the edge
     
     GLfloat vertices[] =
     {
@@ -205,4 +202,23 @@ void cube(GLfloat center_position_X, GLfloat center_position_Y, GLfloat center_p
     glVertexPointer(3, GL_FLOAT, 0, vertices);
     glDrawArrays(GL_QUADS, 0, 24);
     glDisableClientState(GL_VERTEX_ARRAY);
+}
+
+/**
+ * @brief process user input via keyboard
+ * @param window active GLFW window
+ */
+void processUserInput(GLFWwindow *window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera.ProcessKeyboard(RIGHT, deltaTime);
 }

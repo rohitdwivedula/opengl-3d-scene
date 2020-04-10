@@ -1,8 +1,7 @@
+#ifndef OBJ_IMPORT_H
+#define OBJ_IMPORT_H
 
-#ifndef MODEL_H
-#define MODEL_H
-
-#include "Mesh.h"
+#include "mesh.h"
 #include <map>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -10,23 +9,25 @@
 
 using namespace std;
 
-class Model 
+class ObjImport 
 {
 public:
-    /*  Model Data */
-    vector<Texture> textures_loaded;	// stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
-    vector<Mesh> meshes;
+    vector<Texture> textures; //< contains a list of textures loaded so far
+    vector<Mesh> meshes; //< contains a list of meshes loaded
     string directory;
-    bool gammaCorrection;
 
-    /*  Functions   */
-    // constructor, expects a filepath to a 3D model.
-    Model(string const &path, bool gamma = false) : gammaCorrection(gamma)
-    {
-        loadModel(path);
+    /**
+     * @brief instantiate an object loaded from a obj wavefront file
+     * @filepath path to the obj file
+     */
+    ObjImport(string const &filepath){
+        load_data(filepath);
     }
 
-    // draws the model, and thus all its meshes
+    /**
+     * @brief draw the entire imported object
+     * @param shader the GLSL compiled and linked shader programs to use. 
+     **/
     void Draw(Shader shader)
     {
         for(unsigned int i = 0; i < meshes.size(); i++)
@@ -34,38 +35,36 @@ public:
     }
     
 private:
-    /*  Functions   */
-    // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
-    void loadModel(string const &path)
+    /*
+     * Based on code snippets and examples from: https://github.com/assimp/assimp/wiki
+     * @brief load data from file using the Assimp (Open Asset Import Library) library 
+     * @path obj file location
+     */
+    void load_data(string const &path)
     {
-        // read file via ASSIMP
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
-        // check for errors
         if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
         {
             cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << endl;
             return;
         }
-        // retrieve the directory path of the filepath
         directory = path.substr(0, path.find_last_of('/'));
-
-        // process ASSIMP's root node recursively
         processNode(scene->mRootNode, scene);
     }
 
-    // processes a node in a recursive fashion. Processes each individual mesh located at the node and repeats this process on its children nodes (if any).
+    /*
+     * @brief process all the meshes located at the current node 
+     * @param node the current node
+     * @param scene
+     */
     void processNode(aiNode *node, const aiScene *scene)
     {
-        // process each mesh located at the current node
         for(unsigned int i = 0; i < node->mNumMeshes; i++)
         {
-            // the node object only contains indices to index the actual objects in the scene. 
-            // the scene contains all the data, node is just to keep stuff organized (like relations between nodes).
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
             meshes.push_back(processMesh(mesh, scene));
         }
-        // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
         for(unsigned int i = 0; i < node->mNumChildren; i++)
         {
             processNode(node->mChildren[i], scene);
@@ -75,7 +74,6 @@ private:
 
     Mesh processMesh(aiMesh *mesh, const aiScene *scene)
     {
-        // data to fill
         vector<Vertex> vertices;
         vector<unsigned int> indices;
         vector<Texture> textures;
