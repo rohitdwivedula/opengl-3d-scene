@@ -27,6 +27,7 @@ float lastFrame = 0.0f;
 int main()
 {
     glfwInit();
+    // use OpenGL 3.3
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -43,7 +44,7 @@ int main()
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    glViewport(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT); 
+    // glViewport(0.0f, 0.0f, SCREEN_WIDTH, SCREEN_HEIGHT); 
     // glMatrixMode(GL_PROJECTION); 
     // glLoadIdentity(); 
     // glOrtho(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, 0, 1000); 
@@ -69,37 +70,34 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        // draw a cube
         processInput(window);
-        glTranslatef(lastX, lastY, -500 );
-        glTranslatef(lastX, lastY, 500 );
+        // draw a cube
+        // glTranslatef(lastX, lastY, -500 );
+        // glTranslatef(lastX, lastY, 500 );
         
-        cube(lastX, lastY, -500, 200);
-        glPopMatrix();
-        // render
-        // ------
+        // cube(lastX, lastY, -500, 200);
+        // glPopMatrix();
+
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        blenderShader.use();
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = camera.GetViewMatrix();
+        blenderShader.setMat4("projection", projection);
+        blenderShader.setMat4("view", view);
 
-        // glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 100.0f);
-        // glm::mat4 view = camera.GetViewMatrix();
-        // blenderShader.setMat4("projection", projection);
-        // blenderShader.setMat4("view", view);
-
-        // // render the loaded model
-        // glm::mat4 model = glm::mat4(1.0f);
-        // model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); // translate it down so it's at the center of the scene
-        // model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));	// it's a bit too big for our scene, so scale it down
-        // blenderShader.setMat4("model", model);
-        // blenderObject.Draw(blenderShader);
+        // render the loaded model
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.0f, -1.75f, 0.0f)); // translate it down so it's at the center of the scene
+        model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));	// it's a bit too big for our scene, so scale it down
+        blenderShader.setMat4("model", model);
+        blenderObject.Draw(blenderShader);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
     glfwTerminate();
     return 0;
 }
